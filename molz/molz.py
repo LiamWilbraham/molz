@@ -1,6 +1,6 @@
-import tqdm
 import numpy as np
 import pandas as pd
+import tqdm
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -8,14 +8,23 @@ from matplotlib.colors import Normalize
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
+from rdkit.Chem import DataStructs
 
 
 class ZScorer:
 
-    def __init__(self, data, fp_rad=3, fp_bits=4096, from_preprocessed_pickle=False):
+    def __init__(
+        self,
+        data,
+        fp_rad=3,
+        fp_bits=4096,
+        from_preprocessed_pickle=False,
+        hide_progress=False
+    ):
         # fingerprint params
         self.fp_rad = fp_rad
         self.fp_bits = fp_bits
+        self.prog = hide_progress
 
         # zscores for fragments will be stored here
         self.zscores = {}
@@ -40,15 +49,15 @@ class ZScorer:
             fragments = list(range(self.fp_bits))
 
         # compute and store fragment zscores
-        for frag_id in tqdm.tqdm(fragments, desc='Computing fragment z-scores'):
+        for frag_id in tqdm.tqdm(fragments, desc='Computing fragment z-scores', disable=self.prog):
             self.zscores[frag_id] = self._compute_frag_zscore(
                 frag_id, prop, prop_range
             )
 
     def plot(self, k=4, save_to=None):
         x, y = [], []
-        for frag, zscore in self.zscores.items():
-            x.append(frag)
+        for frag, zscore in sorted(self.zscores.items(), key=lambda x: x[1]):
+            x.append(str(frag))
             y.append(zscore)
 
         # trim to k lowest and highest zscores
@@ -76,13 +85,22 @@ class ZScorer:
         self._compute_mols_from_smiles()
 
     def _compute_mols_from_smiles(self):
-        self.data['mol'] = self.data.smiles.apply(Chem.MolFromSmiles)
+        mols = []
+        for smi in tqdm.tqdm(self.data.smiles, desc='Processing SMILES', disable=self.prog):
+            mols.append(Chem.MolFromSmiles(smi))
+        self.data['mol'] = mols
 
     def _compute_morgan_fps(self):
-        self.fps = np.vstack([
-            AllChem.GetMorganFingerprintAsBitVect(mol, self.fp_rad, self.fp_bits)
-            for mol in self.data.mol
-        ])
+        fps = []
+        for mol in tqdm.tqdm(self.data.mol, desc='Computing fingerprints', disable=self.prog):
+            fp = AllChem.GetMorganFingerprintAsBitVect(mol, self.fp_rad, self.fp_bits)
+            array = np.zeros((0, ), dtype=np.int8)
+            DataStructs.ConvertToNumpyArray(fp, array)
+            fps.append(array)
+
+        self.fps = np.zeros((len(fps), self.fp_bits))
+        for i, fp in enumerate(fps):
+            self.fps[i, :] = fp
 
     def _compute_morgan_frags(self):
         self._compute_morgan_fps()
@@ -119,16 +137,7 @@ class ZScorer:
         var = n * k * (N - k) * (N - n) / (N**2 * (N - 1)) + 1e-30
 
         # compute zscore from the above
-        zscore = (x - mean) / var
-
-        # print('N:', N)
-        # print('n:', n)
-        # print('k:', k)
-        # print('x:', x)
-        # print('mean:', mean)
-        # print('var:', var)
-        # print('zscore:', zscore)
-        return zscore
+        return (x - mean) / var
 
     def _get_fragment_images_for_plotting(self, fragment_ids):
         pass
