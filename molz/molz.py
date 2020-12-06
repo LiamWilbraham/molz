@@ -1,9 +1,13 @@
 import tqdm
 import numpy as np
 import pandas as pd
+
+import matplotlib.cm as cm
+import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
+
 from rdkit import Chem
 from rdkit.Chem import AllChem
-import matplotlib.pyplot as plt
 
 
 class ZScorer:
@@ -24,34 +28,42 @@ class ZScorer:
             self._load_molecule_property_data(data)
 
     def score_fragments(self, prop, prop_range, fragment_smiles=None):
+
+        # user-defined fragments
         if fragment_smiles:
             self._compute_user_frags(fragment_smiles)
             fragments = fragment_smiles
+
+        # auto-generated fragments (from morgan fp)
         else:
             self._compute_morgan_frags()
             fragments = list(range(self.fp_bits))
 
+        # compute and store fragment zscores
         for frag_id in tqdm.tqdm(fragments, desc='Computing fragment z-scores'):
             self.zscores[frag_id] = self._compute_frag_zscore(
                 frag_id, prop, prop_range
             )
 
-    def plot(self):
+    def plot(self, k=4, save_to=None):
         x, y = [], []
         for frag, zscore in self.zscores.items():
             x.append(frag)
             y.append(zscore)
 
-        import matplotlib.cm as cm
-        from matplotlib.colors import Normalize
+        # trim to k lowest and highest zscores
+        x = x[:k] + x[-k:]
+        y = y[:k] + y[-k:]
 
+        fig, ax = plt.subplots(1, 1)
         my_cmap = cm.get_cmap('RdYlGn')
         my_norm = Normalize(vmin=min(y), vmax=max(y))
-
-        fix, ax = plt.subplots(1, 1)
         ax.barh(x, y, color=my_cmap(my_norm(y)))
 
-        plt.savefig('fig.png')
+        if save_to:
+            plt.savefig(save_to)
+
+        return fig
 
     def pickle_processed_data(self, picklename):
         self.data.to_pickle(picklename)

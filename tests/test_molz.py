@@ -77,6 +77,3 @@ def test_plot():
     )
 
     scorer.plot()
-
-
-test_plot()
