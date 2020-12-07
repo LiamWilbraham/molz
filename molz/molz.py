@@ -1,12 +1,13 @@
+import tqdm
 import numpy as np
 import pandas as pd
-import tqdm
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 
 from rdkit import Chem
+from rdkit.Chem import Draw
 from rdkit.Chem import AllChem
 from rdkit.Chem import DataStructs
 
@@ -74,6 +75,9 @@ class ZScorer:
 
         return fig
 
+    def plot_fragment_grid(self, save_to=None):
+        pass
+
     def pickle_processed_data(self, picklename):
         self.data.to_pickle(picklename)
 
@@ -139,5 +143,11 @@ class ZScorer:
         # compute zscore from the above
         return (x - mean) / var
 
-    def _get_fragment_images_for_plotting(self, fragment_ids):
-        pass
+    def draw_fragment(self, fragment_id):
+        mol = self.data[self.data[fragment_id] == 1].mol.iloc[0]
+
+        bi = {}
+        fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius=2, bitInfo=bi)
+        fp.GetOnBits()
+
+        return Draw.DrawMorganBit(mol, fragment_id, bi)
