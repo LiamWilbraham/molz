@@ -55,7 +55,69 @@ class ZScorer:
                 frag_id, prop, prop_range
             )
 
-    def plot(self, k=4, save_to=None):
+    def barplot(self, k=4, save_to=None, figsize=None):
+
+        # get top-k and bottom-k zscoring fragments
+        x, y = self._get_k_min_max_zscores(k)
+
+        # create color gradient map
+        my_cmap = cm.get_cmap('RdYlGn')
+        my_norm = Normalize(vmin=-max(y), vmax=max(y))
+
+        # make plot
+        figsize = (8, 4) if figsize is None else figsize
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        ax.bar(x, y, color=my_cmap(my_norm(y)))
+        ax.set_xlabel('z-score (std. dev.)')
+
+        plt.xticks(rotation=90)
+
+        if save_to:
+            plt.savefig(save_to)
+
+        return fig
+
+    def draw_fragment(self, fragment_id):
+        mol = self._get_mol_with_frag(fragment_id)
+
+        bi = {}
+        _ = AllChem.GetMorganFingerprintAsBitVect(
+            mol, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bi
+        )
+
+        img = Draw.DrawMorganBit(
+            mol,
+            fragment_id,
+            bi,
+            useSVG=True,
+            legend=f'zscore = {self.zscores[fragment_id]:.2f}'
+        )
+
+        return img
+
+    def pickle_processed_data(self, picklename):
+        self.data.to_pickle(picklename)
+
+    def _get_fragment_images(self, frag_ids):
+        mols = [self._get_mol_with_frag(frag) for frag in frag_ids]
+
+        images = []
+        for i, m in enumerate(mols):
+            bi = {}
+            _ = AllChem.GetMorganFingerprintAsBitVect(
+                m, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bi
+            )
+            img = Draw.DrawMorganBit(m, int(frag_ids[i]), bi, useSVG=True)
+            images.append(img)
+
+        return images
+
+    def _get_mol_with_frag(self, frag_id):
+        if len(self.data[self.data[int(frag_id)] == 1]) == 0:
+            return None
+        return self.data[self.data[int(frag_id)] == 1].mol.iloc[0]
+
+    def _get_k_min_max_zscores(self, k):
         x, y = [], []
         for frag, zscore in sorted(self.zscores.items(), key=lambda x: x[1]):
             x.append(str(frag))
@@ -65,21 +127,7 @@ class ZScorer:
         x = x[:k] + x[-k:]
         y = y[:k] + y[-k:]
 
-        fig, ax = plt.subplots(1, 1)
-        my_cmap = cm.get_cmap('RdYlGn')
-        my_norm = Normalize(vmin=min(y), vmax=max(y))
-        ax.barh(x, y, color=my_cmap(my_norm(y)))
-
-        if save_to:
-            plt.savefig(save_to)
-
-        return fig
-
-    def plot_fragment_grid(self, save_to=None):
-        pass
-
-    def pickle_processed_data(self, picklename):
-        self.data.to_pickle(picklename)
+        return x, y
 
     def _load_processed_data(self, picklename):
         self.data = pd.read_pickle(picklename)
@@ -142,12 +190,3 @@ class ZScorer:
 
         # compute zscore from the above
         return (x - mean) / var
-
-    def draw_fragment(self, fragment_id):
-        mol = self.data[self.data[fragment_id] == 1].mol.iloc[0]
-
-        bi = {}
-        fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius=2, bitInfo=bi)
-        fp.GetOnBits()
-
-        return Draw.DrawMorganBit(mol, fragment_id, bi)
