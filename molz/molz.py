@@ -41,6 +41,7 @@ class ZScorer:
 
         # user-defined fragments
         if fragment_smiles:
+            self.user_frags = True
             self._compute_user_frags(fragment_smiles)
             fragments = fragment_smiles
 
@@ -55,7 +56,7 @@ class ZScorer:
                 frag_id, prop, prop_range
             )
 
-    def barplot(self, k=4, save_to=None, figsize=None):
+    def plot(self, k=4, save_to=None, figsize=None):
 
         # get top-k and bottom-k zscoring fragments
         x, y = self._get_k_min_max_zscores(k)
@@ -77,7 +78,22 @@ class ZScorer:
 
         return fig
 
-    def draw_fragment(self, fragment_id):
+    def draw_fragment(self, fragment_id, show_zscore=True):
+
+        # images will be annotated with zscore
+        legend = f'zscore = {self.zscores[fragment_id]:.2f}' if show_zscore else ''
+
+        # handle drawing of user-defined fragments
+        if self.user_frags:
+            mol = Chem.MolFromSmiles(fragment_id)
+            return Draw.MolsToGridImage(
+                [mol],
+                molsPerRow=1,
+                subImgSize=(200, 200),
+                legends=[legend]
+            )
+
+        # handle drawing of auto-generated fragments
         mol = self._get_mol_with_frag(fragment_id)
 
         bi = {}
@@ -85,15 +101,13 @@ class ZScorer:
             mol, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bi
         )
 
-        img = Draw.DrawMorganBit(
+        return Draw.DrawMorganBit(
             mol,
             fragment_id,
             bi,
             useSVG=True,
-            legend=f'zscore = {self.zscores[fragment_id]:.2f}'
+            legend=legend
         )
-
-        return img
 
     def pickle_processed_data(self, picklename):
         self.data.to_pickle(picklename)
