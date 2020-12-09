@@ -1,8 +1,14 @@
 __pycache__
+.pytest_cache
 *.egg-info
+build
+dist
+
+# development
 .flake8
 .vscode
-.pytest_cache
+
+# test files
 *.pkl
 *.png
 _testdata

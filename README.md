@@ -21,7 +21,7 @@ forge:
 $ conda install -c conda-forge rdkit
 ```
 
-After that, molZ can be installed through `pip`:
+After that, molZ can be installed with `pip`:
 
 ```
 $ pip install molz
