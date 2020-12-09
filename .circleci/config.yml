@@ -1,27 +1,32 @@
 ---
 version: 2
+variables:
+  - name: condaurl
+    value: "https://repo.anaconda.com/miniconda/Miniconda3-4.7.10-Linux-x86_64.sh"
+  - name: condasha
+    value: "8a324adcc9eaf1c09e22a992bb6234d91a94146840ee6b11c114ecadafc68121  miniconda.sh"
 jobs:
-  build: # required for runs that don't use workflows
+  build:
     working_directory: ~/molz
     docker:
       - image: circleci/python:3.8.0
     steps:
-      - checkout # checkout source code to working directory
+      - checkout
       - run:
           name: Setup Miniconda
           command: |
             sudo apt update
             sudo apt install -y wget
             cd $HOME
-            wget "https://repo.anaconda.com/miniconda/Miniconda3-4.7.10-Linux-x86_64.sh" -O miniconda.sh
-            printf '%s' "8a324adcc9eaf1c09e22a992bb6234d91a94146840ee6b11c114ecadafc68121  miniconda.sh" | sha256sum -c
+            wget ${{ variables.condaurl }} -O miniconda.sh
+            printf '%s' ${{ variables.condasha }} | sha256sum -c
             bash miniconda.sh -b -p $HOME/miniconda
       - run:
           name: Setup environment and run tests
           command: |
             export PATH="$HOME/miniconda/bin:$PATH"
             conda update -y conda
-            conda create -n myenv python=$PYTHON_VERSION -c conda-forge
+            conda create -n myenv python=3.8 -c conda-forge
             source activate myenv
             conda install -y -c conda-forge rdkit
             conda install pytest

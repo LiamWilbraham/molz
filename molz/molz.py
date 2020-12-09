@@ -121,9 +121,9 @@ class ZScorer:
 
         # make plot
         figsize = (8, 4) if figsize is None else figsize
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
-        ax.bar(frag_ids, frag_scores, color=my_cmap(my_norm(frag_scores)))
-        ax.set_xlabel('z-score (std. dev.)')
+        fig, axis = plt.subplots(1, 1, figsize=figsize)
+        axis.bar(frag_ids, frag_scores, color=my_cmap(my_norm(frag_scores)))
+        axis.set_xlabel('z-score (std. dev.)')
 
         plt.xticks(rotation=90)
 
