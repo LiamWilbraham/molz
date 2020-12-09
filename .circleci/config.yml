@@ -1,3 +1,4 @@
+---
 version: 2
 jobs:
   build: # required for runs that don't use workflows
@@ -6,8 +7,6 @@ jobs:
       - image: circleci/python:3.8.0
     steps:
       - checkout # checkout source code to working directory
-      # - run: sudo chown -R circleci:circleci /usr/local/bin
-      # - run: sudo chown -R circleci:circleci /usr/local/lib/python3.8/site-packages
       - run:
           name: Setup Miniconda
           command: |

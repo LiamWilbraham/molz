@@ -55,6 +55,8 @@ class ZScorer:
         self.fp_bits = fp_bits
         self.prog = hide_progress
         self.user_frags = False
+        self.data = None
+        self.fps = None
 
         # zscores for fragments will be stored here
         self.zscores = {}
@@ -111,16 +113,16 @@ class ZScorer:
         """
 
         # get top-k and bottom-k zscoring fragments
-        x, y = self._get_k_min_max_zscores(k)
+        frag_ids, frag_scores = self._get_k_min_max_zscores(k)
 
         # create color gradient map
         my_cmap = cm.get_cmap('RdYlGn')
-        my_norm = Normalize(vmin=-max(y), vmax=max(y))
+        my_norm = Normalize(vmin=-max(frag_scores), vmax=max(frag_scores))
 
         # make plot
         figsize = (8, 4) if figsize is None else figsize
         fig, ax = plt.subplots(1, 1, figsize=figsize)
-        ax.bar(x, y, color=my_cmap(my_norm(y)))
+        ax.bar(frag_ids, frag_scores, color=my_cmap(my_norm(frag_scores)))
         ax.set_xlabel('z-score (std. dev.)')
 
         plt.xticks(rotation=90)
@@ -158,15 +160,15 @@ class ZScorer:
         # handle drawing of auto-generated fragments
         mol = self._get_mol_with_frag(fragment_id)
 
-        bi = {}
+        bit_info = {}
         _ = AllChem.GetMorganFingerprintAsBitVect(
-            mol, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bi
+            mol, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bit_info
         )
 
         return Draw.DrawMorganBit(
             mol,
             fragment_id,
-            bi,
+            bit_info,
             useSVG=True,
             legend=legend
         )
@@ -194,12 +196,12 @@ class ZScorer:
 
         # produce image for each fragment
         images = []
-        for i, m in enumerate(mols):
-            bi = {}
+        for i, mol in enumerate(mols):
+            bit_info = {}
             _ = AllChem.GetMorganFingerprintAsBitVect(
-                m, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bi
+                mol, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bit_info
             )
-            img = Draw.DrawMorganBit(m, int(frag_ids[i]), bi, useSVG=True)
+            img = Draw.DrawMorganBit(mol, int(frag_ids[i]), bit_info, useSVG=True)
             images.append(img)
 
         return images
@@ -226,16 +228,16 @@ class ZScorer:
         Returns:
             Tuple[List, List]: Fragment ids and scores of the top- and bottom-k scoring fragments.
         """
-        x, y = [], []
+        frag_ids, frag_scores = [], []
         for frag, zscore in sorted(self.zscores.items(), key=lambda x: x[1]):
-            x.append(str(frag))
-            y.append(zscore)
+            frag_ids.append(str(frag))
+            frag_scores.append(zscore)
 
         # trim to k lowest and highest zscores
-        x = x[:k] + x[-k:]
-        y = y[:k] + y[-k:]
+        frag_ids = frag_ids[:k] + frag_ids[-k:]
+        frag_scores = frag_scores[:k] + frag_scores[-k:]
 
-        return x, y
+        return frag_ids, frag_scores
 
     def _load_processed_data(self, picklename: str) -> None:
         """Load previously pickled dataframe.
@@ -265,22 +267,22 @@ class ZScorer:
     def _compute_morgan_fps(self) -> None:
         """Compute a numpy array of Morgan fingerprint vectors.
         """
-        fps = []
+        fp_vects = []
         for mol in tqdm.tqdm(self.data.mol, desc='Computing fingerprints', disable=self.prog):
-            fp = AllChem.GetMorganFingerprintAsBitVect(mol, self.fp_rad, self.fp_bits)
+            fp_vect = AllChem.GetMorganFingerprintAsBitVect(mol, self.fp_rad, self.fp_bits)
             array = np.zeros((0, ), dtype=np.int8)
-            DataStructs.ConvertToNumpyArray(fp, array)
-            fps.append(array)
+            DataStructs.ConvertToNumpyArray(fp_vect, array)
+            fp_vects.append(array)
 
-        self.fps = np.zeros((len(fps), self.fp_bits))
-        for i, fp in enumerate(fps):
-            self.fps[i, :] = fp
+        self.fps = np.zeros((len(fp_vects), self.fp_bits))
+        for i, fp_vect in enumerate(fp_vects):
+            self.fps[i, :] = fp_vect
 
     def _compute_morgan_frags(self) -> None:
         """Place morgan fingerprints vectors into dataframe.
         """
         self._compute_morgan_fps()
-        np_df = pd.DataFrame(self.fps, columns=[i for i in range(self.fp_bits)])
+        np_df = pd.DataFrame(self.fps, columns=list(range(self.fp_bits)))
         self.data = pd.concat([self.data, np_df], axis=1)
 
     def _compute_user_frags(self, frags: List[str]) -> None:
