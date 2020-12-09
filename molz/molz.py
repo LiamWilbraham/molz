@@ -1,3 +1,5 @@
+from typing import Tuple, List, Union
+
 import tqdm
 import numpy as np
 import pandas as pd
@@ -16,16 +18,17 @@ class ZScorer:
 
     def __init__(
         self,
-        data,
-        fp_rad=3,
-        fp_bits=4096,
-        from_preprocessed_pickle=False,
-        hide_progress=False
-    ):
+        data: str,
+        fp_rad: int = 3,
+        fp_bits: int = 4096,
+        from_preprocessed_pickle: str = None,
+        hide_progress: bool = False
+    ) -> None:
         # fingerprint params
         self.fp_rad = fp_rad
         self.fp_bits = fp_bits
         self.prog = hide_progress
+        self.user_frags = False
 
         # zscores for fragments will be stored here
         self.zscores = {}
@@ -37,7 +40,12 @@ class ZScorer:
             # load data and compute rdkit mol objs
             self._load_molecule_property_data(data)
 
-    def score_fragments(self, prop, prop_range, fragment_smiles=None):
+    def score_fragments(
+        self,
+        prop: str,
+        prop_range: List[float],
+        fragment_smiles: List[str] = None
+    ) -> None:
 
         # user-defined fragments
         if fragment_smiles:
@@ -56,7 +64,7 @@ class ZScorer:
                 frag_id, prop, prop_range
             )
 
-    def plot(self, k=4, save_to=None, figsize=None):
+    def plot(self, k: int = 4, save_to: str = None, figsize: Tuple[int, int] = None):
 
         # get top-k and bottom-k zscoring fragments
         x, y = self._get_k_min_max_zscores(k)
@@ -78,7 +86,7 @@ class ZScorer:
 
         return fig
 
-    def draw_fragment(self, fragment_id, show_zscore=True):
+    def draw_fragment(self, fragment_id: Union[str, int], show_zscore: bool = True) -> str:
 
         # images will be annotated with zscore
         legend = f'zscore = {self.zscores[fragment_id]:.2f}' if show_zscore else ''
@@ -109,12 +117,15 @@ class ZScorer:
             legend=legend
         )
 
-    def pickle_processed_data(self, picklename):
+    def pickle_processed_data(self, picklename: str) -> None:
         self.data.to_pickle(picklename)
 
-    def _get_fragment_images(self, frag_ids):
+    def _get_fragment_images(self, frag_ids: List[Union[int, str]]) -> list:
+
+        # get mol object that contains each fragment
         mols = [self._get_mol_with_frag(frag) for frag in frag_ids]
 
+        # produce image for each fragment
         images = []
         for i, m in enumerate(mols):
             bi = {}
@@ -126,12 +137,12 @@ class ZScorer:
 
         return images
 
-    def _get_mol_with_frag(self, frag_id):
+    def _get_mol_with_frag(self, frag_id: Union[str, int]) -> Chem.Mol:
         if len(self.data[self.data[int(frag_id)] == 1]) == 0:
             return None
         return self.data[self.data[int(frag_id)] == 1].mol.iloc[0]
 
-    def _get_k_min_max_zscores(self, k):
+    def _get_k_min_max_zscores(self, k: int) -> Tuple[List, List]:
         x, y = [], []
         for frag, zscore in sorted(self.zscores.items(), key=lambda x: x[1]):
             x.append(str(frag))
@@ -143,20 +154,20 @@ class ZScorer:
 
         return x, y
 
-    def _load_processed_data(self, picklename):
+    def _load_processed_data(self, picklename: str) -> None:
         self.data = pd.read_pickle(picklename)
 
-    def _load_molecule_property_data(self, datafile):
+    def _load_molecule_property_data(self, datafile: str) -> None:
         self.data = pd.read_csv(datafile)
         self._compute_mols_from_smiles()
 
-    def _compute_mols_from_smiles(self):
+    def _compute_mols_from_smiles(self) -> None:
         mols = []
         for smi in tqdm.tqdm(self.data.smiles, desc='Processing SMILES', disable=self.prog):
             mols.append(Chem.MolFromSmiles(smi))
         self.data['mol'] = mols
 
-    def _compute_morgan_fps(self):
+    def _compute_morgan_fps(self) -> None:
         fps = []
         for mol in tqdm.tqdm(self.data.mol, desc='Computing fingerprints', disable=self.prog):
             fp = AllChem.GetMorganFingerprintAsBitVect(mol, self.fp_rad, self.fp_bits)
@@ -168,22 +179,27 @@ class ZScorer:
         for i, fp in enumerate(fps):
             self.fps[i, :] = fp
 
-    def _compute_morgan_frags(self):
+    def _compute_morgan_frags(self) -> None:
         self._compute_morgan_fps()
         np_df = pd.DataFrame(self.fps, columns=[i for i in range(self.fp_bits)])
         self.data = pd.concat([self.data, np_df], axis=1)
 
-    def _compute_user_frags(self, frags):
+    def _compute_user_frags(self, frags) -> None:
         frags = [(f, Chem.MolFromSmiles(f)) for f in frags]
         for smiles, mol in frags:
             self.data[smiles] = self.data.mol.apply(self._compute_user_frag_matches, args=(mol,))
 
-    def _compute_user_frag_matches(self, mol, pattern):
+    def _compute_user_frag_matches(self, mol: Chem.Mol, pattern: Chem.Mol) -> int:
         if mol.HasSubstructMatch(pattern):
             return 1
         return 0
 
-    def _compute_frag_zscore(self, frag_id, prop, prop_range):
+    def _compute_frag_zscore(
+        self,
+        frag_id: Union[str, int],
+        prop: str,
+        prop_range: List[float]
+    ) -> float:
         subpop_range = (
             (self.data[prop] >= prop_range[0])
             & (self.data[prop] <= prop_range[1])
