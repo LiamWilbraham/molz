@@ -3,6 +3,6 @@ __pycache__
 .flake8
 .vscode
 .pytest_cache
-*.csv
 *.pkl
 *.png
+testdata*.csv
