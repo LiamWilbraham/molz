@@ -9,19 +9,20 @@ def example_user_defined():
     )
 
     scorer.plot(k=15, save_to='example_penalised_logp.png')
+    scorer.draw_fragment('CCCC')
 
 
 def example_morgan():
-    scorer = ZScorer('_testdata/testdata_5k.csv', fp_bits=16, fp_rad=2)
+    scorer = ZScorer('_testdata/testdata_5k.csv', fp_bits=4096, fp_rad=3)
 
     scorer.score_fragments(
         'penalised_logp', [12, 25]
     )
 
     scorer.plot(k=15, save_to='example_penalised_logp.png')
-    print(scorer.draw_fragment(0))
+    scorer.draw_fragment(0)
 
 
 if __name__ == '__main__':
     example_morgan()
-    # example_user_defined()
+    example_user_defined()
