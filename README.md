@@ -105,4 +105,4 @@ is what we'd expect for relatively high-energy HOMO orbitals. For instance:
 scorer.draw_fragment(5773)
 ```
 
-![example2](./assets/frag.png)
+![example2](./assets/frag.svg)
