@@ -126,7 +126,14 @@ class ZScorer:
             )
             i += 1
 
-    def plot(self, k: int = 4, save_to: str = None, figsize: Tuple[int, int] = (8, 4)):
+    def plot(
+        self,
+        k: int = 4,
+        save_to: str = None,
+        figsize: Tuple[int, int] = (8, 4),
+        top_only: bool = False,
+        log_y: bool = False
+    ):
         """Create a bar plot of top and bottom k zscoring fragments.
 
         Args:
@@ -140,7 +147,8 @@ class ZScorer:
 
         # get top-k and bottom-k zscoring fragments
         frag_ids, frag_scores = self._get_k_min_max_zscores(k)
-        frag_ids, frag_scores = frag_ids[k:], frag_scores[k:]
+        if top_only and len(frag_ids) > 1:
+            frag_ids, frag_scores = frag_ids[k:], frag_scores[k:]
 
         # create color gradient map
         my_cmap = cm.get_cmap('RdYlGn')
@@ -148,7 +156,7 @@ class ZScorer:
 
         # make plot
         fig, axis = plt.subplots(1, 1, figsize=figsize)
-        axis.bar(frag_ids, frag_scores, color=my_cmap(my_norm(frag_scores)))
+        axis.bar(frag_ids, frag_scores, color=my_cmap(my_norm(frag_scores)), width=0.4, log=log_y)
         axis.set_ylabel('z-score (std. dev.)')
 
         plt.xticks(rotation=90)
@@ -175,7 +183,7 @@ class ZScorer:
 
         # handle drawing of user-defined fragments
         if self.user_frags:
-            mol = Chem.MolFromSmiles(fragment_id)
+            mol = Chem.MolFromSmarts(fragment_id)
             return Draw.MolsToGridImage(
                 [mol],
                 molsPerRow=1,
@@ -243,6 +251,10 @@ class ZScorer:
             # get sample in specified property range
             sample = self.data[sample_range]
         else:
+            sample = self.data
+
+        # if fragment not present in range, draw mol from all data
+        if len(sample[sample[int(frag_id)] == 1]) == 0:
             sample = self.data
 
         if len(sample[sample[int(frag_id)] == 1]) == 0:
