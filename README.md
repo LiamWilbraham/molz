@@ -96,7 +96,7 @@ scorer.plot(k=40, figsize=(12, 3), save_to='example_pce.png', top_only=True, log
 
 Which gives the following plot:
 
-![example1](./assets/example_pce.png)
+<img src="assets/example_pce.png"/>
 
 Drawing the top fragments reveals a series of particularly electron-rich substructures, which
 is what we'd expect for relatively high-energy HOMO orbitals. For instance:
@@ -105,4 +105,4 @@ is what we'd expect for relatively high-energy HOMO orbitals. For instance:
 scorer.draw_fragment(5773)
 ```
 
-![example2](./assets/frag.svg)
+<img src="assets/frag.svg"/>
