@@ -1,3 +1,4 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![CircleCI](https://circleci.com/gh/LiamWilbraham/molz.svg?style=shield)](https://circleci.com/gh/LiamWilbraham/molz)
 [![Code Quality Score](https://www.code-inspector.com/project/16914/score/svg)](https://www.code-inspector.com/project/16914/score/svg)
 [![Code Quality Score](https://www.code-inspector.com/project/16914/status/svg)](https://www.code-inspector.com/project/16914/status/svg)
@@ -68,6 +69,32 @@ scorer.plot(k=15, save_to='zscores_user.png')
 scorer.draw_fragment('CCCC')
 ```
 
-## Z-scores : background
+## Example of organic photovoltaics
 
-...
+We will use the data from ["Design Principles and Top Non-Fullerene Acceptor Candidates for
+Organic Photovoltaics"](https://doi.org/10.1016/j.joule.2017.10.006) by Lopez et. al. as an
+example.
+
+First, we need the data, which comes from the article supplementary info:
+
+```
+$ curl https://ars.els-cdn.com/content/image/1-s2.0-S2542435117301307-mmc2.csv > lopez_data.csv
+```
+
+Now, we will use `molz` to detect over- and under-represented molecular fragments in molecues
+with a predicted power conversion efficiencies (PCE) of over 8%.
+
+```python
+from molz import ZScorer
+
+scorer = ZScorer('examples/lopez-joule-data.csv', fp_bits=8192, fp_rad=4)
+
+# we will use the 'PCE_calib' data column and look for over-and under-represented
+# fragments in the sub-population of molecules with PCE >= 8%.
+scorer.score_fragments(
+    'PCE_calib', [8, 100]
+)
+
+scorer.plot(k=15, save_to='example_pce.png')
+scorer.draw_fragment(0)
+```

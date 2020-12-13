@@ -94,11 +94,24 @@ class ZScorer:
             self._compute_morgan_frags()
             fragments = list(range(self.fp_bits))
 
+        sample_range = (
+            (self.data[prop] >= prop_range[0])
+            & (self.data[prop] <= prop_range[1])
+        )
+
+        # get sample in specified property range
+        sample = self.data[sample_range]
+
+        # compute total number of times each fragment appears in data
+        totals = [self.data[frag_id].sum() for frag_id in fragments]
+
         # compute and store fragment zscores
+        i = 0
         for frag_id in tqdm.tqdm(fragments, desc='Computing fragment z-scores', disable=self.prog):
             self.zscores[frag_id] = self._compute_frag_zscore(
-                frag_id, prop, prop_range
+                frag_id, sample, totals[i]
             )
+            i += 1
 
     def plot(self, k: int = 4, save_to: str = None, figsize: Tuple[int, int] = None):
         """Create a bar plot of top and bottom k zscoring fragments.
@@ -123,14 +136,16 @@ class ZScorer:
         figsize = (8, 4) if figsize is None else figsize
         fig, axis = plt.subplots(1, 1, figsize=figsize)
         axis.bar(frag_ids, frag_scores, color=my_cmap(my_norm(frag_scores)))
-        axis.set_xlabel('z-score (std. dev.)')
+        axis.set_ylabel('z-score (std. dev.)')
 
         plt.xticks(rotation=90)
+        plt.tight_layout()
+        plt.show()
 
         if save_to:
             plt.savefig(save_to)
 
-        return fig
+        # return fig
 
     def draw_fragment(self, fragment_id: Union[str, int], show_zscore: bool = True) -> str:
         """Draw a specified fragmnet.
@@ -312,27 +327,21 @@ class ZScorer:
     def _compute_frag_zscore(
         self,
         frag_id: Union[str, int],
-        prop: str,
-        prop_range: List[float]
+        subpop: pd.DataFrame,
+        total: int
     ) -> float:
         """Compute zscores for a given fragment.
 
         Args:
             frag_id (Union[str, int]): Fragment id. Either smiles string if user defined or
                 integer of morgan fingerprint bit position if auto-generated.
-            prop (str): Property used to select sub-population.
-            prop_range (List[float]): Property range from which sub-population is sampled.
+            subpoop (DataFrame):
+            total (int):
 
         Returns:
             float: Fragment zscore.
         """
-        subpop_range = (
-            (self.data[prop] >= prop_range[0])
-            & (self.data[prop] <= prop_range[1])
-        )
-        subpop = self.data[subpop_range]
-
-        pop_total = self.data[frag_id].sum()
+        pop_total = total
         selection_total = subpop[frag_id].sum()
 
         N = len(self.data)  # total in population
