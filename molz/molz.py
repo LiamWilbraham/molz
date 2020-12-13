@@ -10,8 +10,8 @@ from matplotlib.colors import Normalize
 
 from rdkit import Chem
 from rdkit.Chem import Draw
-from rdkit.Chem import AllChem
 from rdkit.Chem import DataStructs
+from rdkit.Chem import rdMolDescriptors
 
 
 class ZScorer:
@@ -63,16 +63,18 @@ class ZScorer:
 
         if from_preprocessed_pickle:
             # load preprocessed data from pickle
-            self._load_processed_data(data)
+            self._load_processed_data(from_preprocessed_pickle)
+            self.use_preprocessed = True
         else:
             # load data and compute rdkit mol objs
             self._load_molecule_property_data(data)
+            self.use_preprocessed = False
 
     def score_fragments(
         self,
         prop: str,
         prop_range: List[float],
-        fragment_smiles: List[str] = None
+        fragment_smiles: List[str] = None,
     ) -> None:
         """Compute zscores for user-defined or auto-generated fragments.
 
@@ -86,12 +88,14 @@ class ZScorer:
         # user-defined fragments
         if fragment_smiles:
             self.user_frags = True
-            self._compute_user_frags(fragment_smiles)
+            if not self.use_preprocessed:
+                self._compute_user_frags(fragment_smiles)
             fragments = fragment_smiles
 
         # auto-generated fragments (from morgan fp)
         else:
-            self._compute_morgan_frags()
+            if not self.use_preprocessed:
+                self._compute_morgan_frags()
             fragments = list(range(self.fp_bits))
 
         sample_range = (
@@ -127,6 +131,7 @@ class ZScorer:
 
         # get top-k and bottom-k zscoring fragments
         frag_ids, frag_scores = self._get_k_min_max_zscores(k)
+        frag_ids, frag_scores = frag_ids[k:], frag_scores[k:]
 
         # create color gradient map
         my_cmap = cm.get_cmap('RdYlGn')
@@ -176,7 +181,7 @@ class ZScorer:
         mol = self._get_mol_with_frag(fragment_id)
 
         bit_info = {}
-        _ = AllChem.GetMorganFingerprintAsBitVect(
+        _ = rdMolDescriptors.GetMorganFingerprintAsBitVect(
             mol, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bit_info
         )
 
@@ -213,7 +218,7 @@ class ZScorer:
         images = []
         for i, mol in enumerate(mols):
             bit_info = {}
-            _ = AllChem.GetMorganFingerprintAsBitVect(
+            _ = rdMolDescriptors.GetMorganFingerprintAsBitVect(
                 mol, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bit_info
             )
             img = Draw.DrawMorganBit(mol, int(frag_ids[i]), bit_info, useSVG=True)
@@ -284,7 +289,9 @@ class ZScorer:
         """
         fp_vects = []
         for mol in tqdm.tqdm(self.data.mol, desc='Computing fingerprints', disable=self.prog):
-            fp_vect = AllChem.GetMorganFingerprintAsBitVect(mol, self.fp_rad, self.fp_bits)
+            fp_vect = rdMolDescriptors.GetMorganFingerprintAsBitVect(
+                mol, self.fp_rad, self.fp_bits
+            )
             array = np.zeros((0, ), dtype=np.int8)
             DataStructs.ConvertToNumpyArray(fp_vect, array)
             fp_vects.append(array)
