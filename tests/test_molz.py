@@ -18,9 +18,9 @@ def test_compute_user_frags():
     assert scorer.data['CCCC'].iloc[1] == 1
 
 
-def test_compute_morgan_frags():
+def test_generate_df_with_fragments():
     scorer = ZScorer('tests/data.csv', fp_rad=0, fp_bits=8)
-    scorer._compute_morgan_frags()
+    scorer._generate_df_with_fragments()
 
     assert len(scorer.data.columns) == 11  # each frag col plus originals
     assert scorer.data[0].iloc[0] == 0
@@ -31,7 +31,7 @@ def test_score_fragments_user_defined():
     scorer = ZScorer('tests/data.csv')
 
     scorer.score_fragments(
-        'molwt', [60, 100], fragment_smiles=['c1ccccc1', 'O', 'CCC']
+        'molwt', [60, 100], fragment_smarts=['c1ccccc1', 'O', 'CCC']
     )
 
     assert scorer.zscores['c1ccccc1'] == approx(2.0)
@@ -56,7 +56,7 @@ def test_pickle_processed_data():
     scorer = ZScorer('tests/data.csv')
 
     scorer.score_fragments(
-        'molwt', [60, 100], fragment_smiles=['c1ccccc1', 'O', 'CCC']
+        'molwt', [60, 100], fragment_smarts=['c1ccccc1', 'O', 'CCC']
     )
 
     scorer.pickle_processed_data('pytestpickle.pkl')
@@ -73,7 +73,7 @@ def test_plot():
     scorer = ZScorer('tests/data.csv')
 
     scorer.score_fragments(
-        'molwt', [60, 100], fragment_smiles=['c1ccccc1', 'O', 'CCC']
+        'molwt', [60, 100], fragment_smarts=['c1ccccc1', 'O', 'CCC']
     )
 
     scorer.plot()
