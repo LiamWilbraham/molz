@@ -87,8 +87,6 @@ with a predicted HOMO energy of greater than -5 eV.
 ```python
 from molz import ZScorer
 
-scorer = ZScorer('examples/lopez-joule-data.csv', fp_bits=8192, fp_rad=4)
-
 # we will use the 'HOMO_calc' data column.
 scorer = ZScorer('lopez-data.csv', fp_bits=8192, fp_rad=3)
 scorer.score_fragments('HOMO_calc', [-5, 10])
@@ -98,7 +96,7 @@ scorer.plot(k=40, figsize=(12, 3), save_to='example_pce.png', top_only=True, log
 
 Which gives the following plot:
 
-![example1](assets/example_pce.png)
+![example1](./assets/example_pce.png)
 
 Drawing the top fragments reveals a series of particularly electron-rich substructures, which
 is what we'd expect for relatively high-energy HOMO orbitals. For instance:
@@ -107,4 +105,4 @@ is what we'd expect for relatively high-energy HOMO orbitals. For instance:
 scorer.draw_fragment(5773)
 ```
 
-![example2](assets/frag.png)
+![example2](./assets/frag.png)
