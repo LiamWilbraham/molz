@@ -33,6 +33,7 @@ class ZScorer:
         data: str,
         fp_rad: int = 3,
         fp_bits: int = 4096,
+        fp_type: str = 'morgan',
         from_preprocessed_pickle: str = None,
         hide_progress: bool = False
     ) -> None:
@@ -53,10 +54,13 @@ class ZScorer:
         # fingerprint params
         self.fp_rad = fp_rad
         self.fp_bits = fp_bits
+        self.fp_type = fp_type
         self.prog = hide_progress
         self.user_frags = False
         self.data = None
         self.fps = None
+        self.prop_range = None
+        self.prop = None
 
         # zscores for fragments will be stored here
         self.zscores = {}
@@ -74,7 +78,7 @@ class ZScorer:
         self,
         prop: str,
         prop_range: List[float],
-        fragment_smiles: List[str] = None,
+        fragment_smarts: List[str] = None,
     ) -> None:
         """Compute zscores for user-defined or auto-generated fragments.
 
@@ -82,20 +86,23 @@ class ZScorer:
             prop (str): Property to consider when computing zscores (from input data).
             prop_range (List[float]): Property range from which sample will be extracted to
                 compute zscores.
-            fragment_smiles (List[str], optional): User-defined fragments. Defaults to None,
+            fragment_smarts (List[str], optional): User-defined fragments. Defaults to None,
                 in which case fragments are auto-generated.
         """
+        self.prop_range = prop_range
+        self.prop = prop
+
         # user-defined fragments
-        if fragment_smiles:
+        if fragment_smarts:
             self.user_frags = True
             if not self.use_preprocessed:
-                self._compute_user_frags(fragment_smiles)
-            fragments = fragment_smiles
+                self._compute_user_frags(fragment_smarts)
+            fragments = fragment_smarts
 
         # auto-generated fragments (from morgan fp)
         else:
             if not self.use_preprocessed:
-                self._compute_morgan_frags()
+                self._generate_df_with_fragments()
             fragments = list(range(self.fp_bits))
 
         sample_range = (
@@ -105,6 +112,8 @@ class ZScorer:
 
         # get sample in specified property range
         sample = self.data[sample_range]
+
+        print('n in sample:', len(sample))
 
         # compute total number of times each fragment appears in data
         totals = [self.data[frag_id].sum() for frag_id in fragments]
@@ -117,7 +126,7 @@ class ZScorer:
             )
             i += 1
 
-    def plot(self, k: int = 4, save_to: str = None, figsize: Tuple[int, int] = None):
+    def plot(self, k: int = 4, save_to: str = None, figsize: Tuple[int, int] = (8, 4)):
         """Create a bar plot of top and bottom k zscoring fragments.
 
         Args:
@@ -138,7 +147,6 @@ class ZScorer:
         my_norm = Normalize(vmin=-max(frag_scores), vmax=max(frag_scores))
 
         # make plot
-        figsize = (8, 4) if figsize is None else figsize
         fig, axis = plt.subplots(1, 1, figsize=figsize)
         axis.bar(frag_ids, frag_scores, color=my_cmap(my_norm(frag_scores)))
         axis.set_ylabel('z-score (std. dev.)')
@@ -149,8 +157,6 @@ class ZScorer:
 
         if save_to:
             plt.savefig(save_to)
-
-        # return fig
 
     def draw_fragment(self, fragment_id: Union[str, int], show_zscore: bool = True) -> str:
         """Draw a specified fragmnet.
@@ -181,17 +187,35 @@ class ZScorer:
         mol = self._get_mol_with_frag(fragment_id)
 
         bit_info = {}
-        _ = rdMolDescriptors.GetMorganFingerprintAsBitVect(
-            mol, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bit_info
-        )
+        if self.fp_type == 'morgan':
+            _ = rdMolDescriptors.GetMorganFingerprintAsBitVect(
+                mol, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bit_info
+            )
 
-        return Draw.DrawMorganBit(
-            mol,
-            fragment_id,
-            bit_info,
-            useSVG=True,
-            legend=legend
-        )
+            return Draw.DrawMorganBit(
+                mol,
+                fragment_id,
+                bit_info,
+                useSVG=True,
+                legend=legend
+            )
+
+        if self.fp_type == 'rdkit':
+            _ = Chem.RDKFingerprint(
+                mol,
+                minPath=self.fp_rad,
+                maxPath=self.fp_rad,
+                fpSize=self.fp_bits,
+                bitInfo=bit_info,
+            )
+
+            return Draw.DrawRDKitBit(
+                mol,
+                fragment_id,
+                bit_info,
+                useSVG=True,
+                legend=legend
+            )
 
     def pickle_processed_data(self, picklename: str) -> None:
         """Create a pickle file of pre-processed dataframe.
@@ -200,31 +224,6 @@ class ZScorer:
             picklename (str): Path to pickle file.
         """
         self.data.to_pickle(picklename)
-
-    def _get_fragment_images(self, frag_ids: List[Union[int, str]]) -> list:
-        """Get an SVG image for each fragment. Not currently used.
-
-        Args:
-            frag_ids (List[Union[int, str]]): Fragments for which to produce images.
-
-        Returns:
-            list: List of fragment SVGs.
-        """
-
-        # get mol object that contains each fragment
-        mols = [self._get_mol_with_frag(frag) for frag in frag_ids]
-
-        # produce image for each fragment
-        images = []
-        for i, mol in enumerate(mols):
-            bit_info = {}
-            _ = rdMolDescriptors.GetMorganFingerprintAsBitVect(
-                mol, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bit_info
-            )
-            img = Draw.DrawMorganBit(mol, int(frag_ids[i]), bit_info, useSVG=True)
-            images.append(img)
-
-        return images
 
     def _get_mol_with_frag(self, frag_id: Union[str, int]) -> Chem.Mol:
         """Given a fragment id, return a mol containing that fragment.
@@ -235,9 +234,20 @@ class ZScorer:
         Returns:
             Chem.Mol: RDKit mol object of mol containing fragment.
         """
-        if len(self.data[self.data[int(frag_id)] == 1]) == 0:
+        if self.prop_range:
+            sample_range = (
+                (self.data[self.prop] >= self.prop_range[0])
+                & (self.data[self.prop] <= self.prop_range[1])
+            )
+
+            # get sample in specified property range
+            sample = self.data[sample_range]
+        else:
+            sample = self.data
+
+        if len(sample[sample[int(frag_id)] == 1]) == 0:
             return None
-        return self.data[self.data[int(frag_id)] == 1].mol.iloc[0]
+        return sample[sample[int(frag_id)] == 1].mol.iloc[0]
 
     def _get_k_min_max_zscores(self, k: int) -> Tuple[List, List]:
         """From all zscores, return the fragment ids and scores of the top- and bottom-k scoring.
@@ -284,26 +294,36 @@ class ZScorer:
             mols.append(Chem.MolFromSmiles(smi))
         self.data['mol'] = mols
 
-    def _compute_morgan_fps(self) -> None:
+    def _compute_fps(self) -> None:
         """Compute a numpy array of Morgan fingerprint vectors.
         """
         fp_vects = []
         for mol in tqdm.tqdm(self.data.mol, desc='Computing fingerprints', disable=self.prog):
-            fp_vect = rdMolDescriptors.GetMorganFingerprintAsBitVect(
-                mol, self.fp_rad, self.fp_bits
-            )
-            array = np.zeros((0, ), dtype=np.int8)
-            DataStructs.ConvertToNumpyArray(fp_vect, array)
-            fp_vects.append(array)
+
+            if self.fp_type == 'morgan':
+                fp_vect = rdMolDescriptors.GetMorganFingerprintAsBitVect(
+                    mol, self.fp_rad, self.fp_bits
+                )
+                array = np.zeros((0, ), dtype=np.int8)
+                DataStructs.ConvertToNumpyArray(fp_vect, array)
+                fp_vects.append(array)
+
+            if self.fp_type == 'rdkit':
+                fp_vect = Chem.RDKFingerprint(
+                    mol,
+                    minPath=self.fp_rad,
+                    maxPath=self.fp_rad,
+                    fpSize=self.fp_bits,
+                )
 
         self.fps = np.zeros((len(fp_vects), self.fp_bits))
         for i, fp_vect in enumerate(fp_vects):
             self.fps[i, :] = fp_vect
 
-    def _compute_morgan_frags(self) -> None:
+    def _generate_df_with_fragments(self) -> None:
         """Place morgan fingerprints vectors into dataframe.
         """
-        self._compute_morgan_fps()
+        self._compute_fps()
         np_df = pd.DataFrame(self.fps, columns=list(range(self.fp_bits)))
         self.data = pd.concat([self.data, np_df], axis=1)
 
@@ -313,7 +333,7 @@ class ZScorer:
         Args:
             frags (List[str]): User-defined fragments.
         """
-        frags = [(f, Chem.MolFromSmiles(f)) for f in frags]
+        frags = [(f, Chem.MolFromSmarts(f)) for f in frags]
         for smiles, mol in frags:
             self.data[smiles] = self.data.mol.apply(self._compute_user_frag_matches, args=(mol,))
 
@@ -342,8 +362,8 @@ class ZScorer:
         Args:
             frag_id (Union[str, int]): Fragment id. Either smiles string if user defined or
                 integer of morgan fingerprint bit position if auto-generated.
-            subpoop (DataFrame):
-            total (int):
+            subpoop (DataFrame): Sample of population in specified property range.
+            total (int): Total in population with fragment.
 
         Returns:
             float: Fragment zscore.
