@@ -82,19 +82,29 @@ $ curl https://ars.els-cdn.com/content/image/1-s2.0-S2542435117301307-mmc2.csv >
 ```
 
 Now, we will use `molz` to detect over- and under-represented molecular fragments in molecues
-with a predicted power conversion efficiencies (PCE) of over 8%.
+with a predicted HOMO energy of greater than -5 eV.
 
 ```python
 from molz import ZScorer
 
 scorer = ZScorer('examples/lopez-joule-data.csv', fp_bits=8192, fp_rad=4)
 
-# we will use the 'PCE_calib' data column and look for over-and under-represented
-# fragments in the sub-population of molecules with PCE >= 8%.
-scorer.score_fragments(
-    'PCE_calib', [8, 100]
-)
+# we will use the 'HOMO_calc' data column.
+scorer = ZScorer('lopez-data.csv', fp_bits=8192, fp_rad=3)
+scorer.score_fragments('HOMO_calc', [-5, 10])
 
-scorer.plot(k=15, save_to='example_pce.png')
-scorer.draw_fragment(0)
+scorer.plot(k=40, figsize=(12, 3), save_to='example_pce.png', top_only=True, log_y=True)
 ```
+
+Which gives the following plot:
+
+![example1](assets/example_pce.png)
+
+Drawing the top fragments reveals a series of particularly electron-rich substructures, which
+is what we'd expect for relatively high-energy HOMO orbitals. For instance:
+
+```
+scorer.draw_fragment(5773)
+```
+
+![example2](assets/frag.png)

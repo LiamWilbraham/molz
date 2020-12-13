@@ -113,8 +113,6 @@ class ZScorer:
         # get sample in specified property range
         sample = self.data[sample_range]
 
-        print('n in sample:', len(sample))
-
         # compute total number of times each fragment appears in data
         totals = [self.data[frag_id].sum() for frag_id in fragments]
 
