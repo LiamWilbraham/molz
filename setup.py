@@ -12,7 +12,7 @@ by the user, or automatically generated using Morgan fingerprints.
 """
 
 setup(name='molz',
-      version='0.1.1',
+      version='0.1.2',
       description=description,
       long_description=long_description,
       url='https://github.com/LiamWilbraham/molz',
