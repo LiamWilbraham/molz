@@ -84,6 +84,9 @@ $ curl https://ars.els-cdn.com/content/image/1-s2.0-S2542435117301307-mmc2.csv >
 Now, we will use `molz` to detect over- and under-represented molecular fragments in molecues
 with a predicted HOMO energy of greater than -5 eV.
 
+We will use a relatively large number of fingerprint bits, to minimize
+[bit collisions](http://rdkit.blogspot.com/2014/02/colliding-bits.html).
+
 ```python
 from molz import ZScorer
 
@@ -96,13 +99,14 @@ scorer.plot(k=40, figsize=(12, 3), save_to='example_pce.png', top_only=True, log
 
 Which gives the following plot:
 
-<img src="assets/example_pce.png"/>
+<img src="./assets/example_pce.png"/>
 
-Drawing the top fragments reveals a series of particularly electron-rich substructures, which
-is what we'd expect for relatively high-energy HOMO orbitals. For instance:
+In this case the fragments (x axis) are expressed as bit vector positions. Drawing the top
+fragments reveals a series of particularly electron-rich substructures, which is what we'd expect
+for relatively high-energy HOMO orbitals. For instance:
 
 ```
 scorer.draw_fragment(5773)
 ```
 
-<img src="assets/frag.svg"/>
+<img src="./assets/bit_frag.png"/>
