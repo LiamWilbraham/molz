@@ -10,6 +10,5 @@ dist
 
 # test files
 *.pkl
-*.png
 _testdata
 examples
