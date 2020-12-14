@@ -27,6 +27,7 @@ class ZScorer:
     fragment. Fragments can either be user-defined, or auto-generated using Morgan circular
     fingerprints.
     """
+    FP_TYPES = ['rdkit', 'morgan']
 
     def __init__(
         self,
@@ -47,6 +48,7 @@ class ZScorer:
                 Defaults to 3.
             fp_bits (int, optional): Morgan fingerprint bit length used in auto-generated
                 fragments. Defaults to 4096.
+            fp_type (str, optional): One of 'morgan', 'rdkit'. Defaults to 'morgan'.
             from_preprocessed_pickle (str, optional): Path to pre-processed dataframe. Useful when
                 dealing with large datasets Defaults to None.
             hide_progress (bool, optional): Supress progress bar outputs. Defaults to False.
@@ -55,6 +57,10 @@ class ZScorer:
         self.fp_rad = fp_rad
         self.fp_bits = fp_bits
         self.fp_type = fp_type
+
+        if fp_type not in self.FP_TYPES:
+            raise Exception('Fingerprint type not supported.')
+
         self.prog = hide_progress
         self.user_frags = False
         self.data = None
@@ -159,10 +165,11 @@ class ZScorer:
 
         plt.xticks(rotation=90)
         plt.tight_layout()
-        plt.show()
 
         if save_to:
             plt.savefig(save_to)
+
+        plt.show()
 
     def draw_fragment(self, fragment_id: Union[str, int], show_zscore: bool = True) -> str:
         """Draw a specified fragmnet.
