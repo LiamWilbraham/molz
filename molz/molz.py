@@ -321,9 +321,6 @@ class ZScorer:
                 fp_vect = rdMolDescriptors.GetMorganFingerprintAsBitVect(
                     mol, self.fp_rad, self.fp_bits
                 )
-                array = np.zeros((0, ), dtype=np.int8)
-                DataStructs.ConvertToNumpyArray(fp_vect, array)
-                fp_vects.append(array)
 
             if self.fp_type == 'rdkit':
                 fp_vect = Chem.RDKFingerprint(
@@ -332,6 +329,10 @@ class ZScorer:
                     maxPath=self.fp_rad,
                     fpSize=self.fp_bits,
                 )
+
+            array = np.zeros((0, ), dtype=np.int8)
+            DataStructs.ConvertToNumpyArray(fp_vect, array)
+            fp_vects.append(array)
 
         self.fps = np.zeros((len(fp_vects), self.fp_bits))
         for i, fp_vect in enumerate(fp_vects):
