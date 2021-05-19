@@ -1,8 +1,3 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![CircleCI](https://circleci.com/gh/LiamWilbraham/molz.svg?style=shield)](https://circleci.com/gh/LiamWilbraham/molz)
-[![Code Quality Score](https://www.code-inspector.com/project/16914/score/svg)](https://www.code-inspector.com/project/16914/score/svg)
-[![Code Quality Score](https://www.code-inspector.com/project/16914/status/svg)](https://www.code-inspector.com/project/16914/status/svg)
-
 # molZ
 
 Statistical analysis tool to help identify molecular fragments that promote, or detract from,
