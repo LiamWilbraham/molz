@@ -1,7 +1,5 @@
 from typing import Tuple, List, Union
 
-from . import utils
-
 import tqdm
 import numpy as np
 import scipy.stats as stats
