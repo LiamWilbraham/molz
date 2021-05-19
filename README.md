@@ -20,7 +20,7 @@ $ conda install -c conda-forge rdkit
 Use the following to install the other prequisites:
 
 ```bash
-$ pip install tqdm numpy scipy pandas pandasql matplot lib
+$ pip install tqdm numpy scipy pandas pandasql matplotlib
 ```
 
 After that, molZ can be installed with `pip`:
