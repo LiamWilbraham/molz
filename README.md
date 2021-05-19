@@ -115,4 +115,4 @@ We can the view each of the fragments:
 scorer.draw_fragment(5607)
 ```
 
-<img src="./assets/frag_5607.png"/>
+<img src="./assets/frag_5607.PNG"/>
