@@ -434,17 +434,23 @@ class ZScorer:
         """
         pop_total = total
         selection_total = subpop[frag_id].sum()
-
+        
+        use_scipy = False
+        
         N = len(self.data)  # total in population
         n = len(subpop)  # total in selection
         k = pop_total  # num in population with fragment
         x = selection_total  # num in selection with fragment
-
-        # Using sp just so it's easy to switch functions if need be. Granted it's a little
-        # slower than previous but easy enough to switch back
-        mean = stats.hypergeom.mean(N, n, k)
-        var = stats.hypergeom.var(N, n, k) + 1e-30
-
+        
+        if use_scipy:
+            # Using sp just so it's easy to switch functions if need be. Granted it's a little
+            # slower than previous but easy enough to switch back with use_scipy = False
+            mean = stats.hypergeom.mean(N, n, k)
+            var = stats.hypergeom.var(N, n, k) + 1e-30 # Prevent divide by zero errors
+        else:
+            mean = n * k / N
+            var = n * k * (N - k) * (N - n) / (N**2 * (N - 1)) + 1e-30
+           
         z = (x - mean) / var
 
         return z
