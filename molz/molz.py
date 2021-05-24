@@ -4,6 +4,7 @@ import tqdm
 import numpy as np
 import scipy.stats as stats
 import pandas as pd
+from tabulate import tabulate
 from pandasql import sqldf
 
 import matplotlib.cm as cm
@@ -40,6 +41,7 @@ class ZScorer:
         fp_type: str = "morgan",
         from_preprocessed_pickle: str = None,
         hide_progress: bool = False,
+        tabulate: bool = True,
     ) -> None:
         """Init method for ZScorer.
 
@@ -67,6 +69,7 @@ class ZScorer:
             raise Exception("Fingerprint type not supported.")
 
         self.prog = hide_progress
+        self.table = tabulate
         self.user_frags = False
         self.data = None
         self.fps = None
@@ -140,6 +143,7 @@ class ZScorer:
             if not self.use_preprocessed:
                 self._compute_user_frags(fragment_smarts)
             fragments = fragment_smarts
+            self.user_frags_strings = fragment_smarts
 
         # auto-generated fragments (from morgan fp)
         else:
@@ -170,7 +174,8 @@ class ZScorer:
         top_only: bool = False,
         log_y: bool = False,
     ) -> None:
-        """Create a bar plot of top and bottom k zscoring fragments.
+        """Create a bar plot of top and bottom k zscoring fragments and print results to console
+        as a table.
 
         Args:
             k (int, optional): Number of top and bottom scoring fragments. Defaults to 4.
@@ -179,12 +184,17 @@ class ZScorer:
 
         Returns:
             fig: Bar plot of top and bottom k zscoring fragments.
+
+        Also prints a table for the highest k zscored fragments.
         """
 
-        # get top-k and bottom-k zscoring fragments
+        # get top-k and bottom-k zscoring fragments and add to dict for tabulation
         frag_ids, frag_scores = self._get_k_min_max_zscores(k)
+
         if top_only and len(frag_ids) > 1:
             frag_ids, frag_scores = frag_ids[k:], frag_scores[k:]
+
+        printable = {"Fragment": frag_ids[::-1], "z": frag_scores[::-1]}
 
         # create color gradient map
         my_cmap = cm.get_cmap("RdYlGn")
@@ -203,6 +213,9 @@ class ZScorer:
 
         plt.xticks(rotation=90)
         plt.tight_layout()
+
+        if self.table:
+            print("\n" + tabulate(printable, headers="keys", tablefmt="github") + "\n")
 
         if save_to:
             plt.savefig(save_to)
@@ -354,7 +367,8 @@ class ZScorer:
         Returns:
             Tuple[List, List]: Fragment ids and scores of the top- and bottom-k scoring fragments.
         """
-        frag_ids, frag_scores = [], []
+        frag_ids, frag_scores, user_frags = [], [], []
+
         for frag, zscore in sorted(self.zscores.items(), key=lambda x: x[1]):
             frag_ids.append(str(frag))
             frag_scores.append(zscore)
