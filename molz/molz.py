@@ -229,7 +229,7 @@ class ZScorer:
         # handle drawing of user-defined fragments
         if self.user_frags:
             mol = Chem.MolFromSmarts(fragment_id)
-            return Draw.MolsToGridImage(
+            img = Draw.MolsToGridImage(
                 [mol], molsPerRow=1, subImgSize=(200, 200), legends=[legend]
             )
 
@@ -242,7 +242,7 @@ class ZScorer:
                 mol, radius=self.fp_rad, nBits=self.fp_bits, bitInfo=bit_info
             )
 
-            return Draw.DrawMorganBit(
+            img = Draw.DrawMorganBit(
                 mol, fragment_id, bit_info, useSVG=True, legend=legend
             )
 
@@ -255,9 +255,10 @@ class ZScorer:
                 bitInfo=bit_info,
             )
 
-            return Draw.DrawRDKitBit(
+            img = Draw.DrawRDKitBit(
                 mol, fragment_id, bit_info, useSVG=True, legend=legend
             )
+        return img
 
     def pickle_processed_data(self, picklename: str) -> None:
         """Create a pickle file of pre-processed dataframe.
