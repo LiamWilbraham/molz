@@ -82,20 +82,33 @@ class ZScorer:
         # zscores for fragments will be stored here
         self.zscores = {}
 
-    def score_fragments(
+        # load in the data on initialisation
+        if self.from_preprocessed_pickle:
+            # load preprocessed data from pickle
+            self._load_processed_data(self.from_preprocessed_pickle)
+            self.use_preprocessed = True
+        else:
+            # load data and compute rdkit mol objs
+            self._load_molecule_property_data(self.datafile)
+            self.use_preprocessed = False
+
+    def set_ranges(
         self,
         properties: List[Tuple[str, Tuple[float, float]]],
-        fragment_smarts: List[str] = None,
-    ) -> None:
-        """Compute zscores for user-defined or auto-generated fragments.
+    ) -> pd.DataFrame:
+        """Define the range or ranges of properties in the data, and get a subpopulation
+        of the data that meets the set criteria.
 
         Args:
-            prop (str): Property to consider when computing zscores (from input data).
-            prop_range (List[float]): Property range from which sample will be extracted to
-                compute zscores.
-            fragment_smarts (List[str], optional): User-defined fragments. Defaults to None,
-                in which case fragments are auto-generated.
+            properties List[Tuple[str, Tuple[float, float]]]: A list of the properties and
+            their respective ranges:
+            [
+                ('property_1'(lower_bound, upper_bound)),
+                ('property_2'(lower_bound, upper_bound)),
+            ]
+            etc...
         """
+
         props = []
         prop_ranges = []
         for prop in properties:
@@ -104,18 +117,21 @@ class ZScorer:
         self.prop_ranges = prop_ranges
         self.props = props
 
-        cols = ["smiles"] + props
+        sample = self.getSample()
 
-        # from initialisation function
+    def score_fragments(
+        self,
+        fragment_smarts: List[str] = None,
+    ) -> None:
+        """Compute zscores for user-defined or auto-generated fragments.
 
-        if self.from_preprocessed_pickle:
-            # load preprocessed data from pickle
-            self._load_processed_data(self.from_preprocessed_pickle)
-            self.use_preprocessed = True
-        else:
-            # load data and compute rdkit mol objs
-            self._load_molecule_property_data(self.datafile, cols)
-            self.use_preprocessed = False
+        Args:
+            fragment_smarts (List[str], optional): User-defined fragments. Defaults to None,
+                in which case fragments are auto-generated.
+        """
+
+        # adding Chem.Mol object to the dataframe
+        self._compute_mols_from_smiles()
 
         # user-defined fragments
         if fragment_smarts:
@@ -258,15 +274,14 @@ class ZScorer:
         """
         self.data = pd.read_pickle(picklename)
 
-    def _load_molecule_property_data(self, datafile: str, cols: List[str]) -> None:
+    def _load_molecule_property_data(self, datafile: str) -> None:
         """Load data from .CSV.
 
         Args:
             datafile (str): Path to .CSV.
         """
-        self.data = pd.read_csv(datafile, usecols=cols, low_memory=True)
+        self.data = pd.read_csv(datafile, low_memory=True)
         self.data.insert(0, "ID", range(0, len(self.data)))
-        self._compute_mols_from_smiles()
 
     def getSample(self):
         """
@@ -305,8 +320,8 @@ class ZScorer:
             inplace=True,
         )
         del tmp_df
-        percent = 100.0 * float(len(sample) / len(self.data))
-        print(f"\nSample constitutes {round(percent, 3)}% of the total data.\n")
+        self.relative_sample_size = float(len(sample) / len(self.data))
+        print(f"{self.relative_sample_size * 100}")
         return sample
 
     def _get_mol_with_frag(self, frag_id: Union[str, int]) -> Chem.Mol:
@@ -434,23 +449,22 @@ class ZScorer:
         """
         pop_total = total
         selection_total = subpop[frag_id].sum()
-        
-        use_scipy = False
-        
+
         N = len(self.data)  # total in population
         n = len(subpop)  # total in selection
         k = pop_total  # num in population with fragment
         x = selection_total  # num in selection with fragment
-        
+
+        # Using sp just so it's easy to switch functions if need be. Granted it's a little
+        # slower than previous but easy enough to switch back
+        use_scipy = False
         if use_scipy:
-            # Using sp just so it's easy to switch functions if need be. Granted it's a little
-            # slower than previous but easy enough to switch back with use_scipy = False
             mean = stats.hypergeom.mean(N, n, k)
-            var = stats.hypergeom.var(N, n, k) + 1e-30 # Prevent divide by zero errors
+            var = stats.hypergeom.var(N, n, k) + 1e-30
         else:
             mean = n * k / N
-            var = n * k * (N - k) * (N - n) / (N**2 * (N - 1)) + 1e-30
-           
+            var = n * k * (N - k) * (N - n) / (N ** 2 * (N - 1)) + 1e-30
+
         z = (x - mean) / var
 
         return z
