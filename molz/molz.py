@@ -1,10 +1,11 @@
 from typing import Tuple, List, Union
+from tabulate import tabulate
 
 import tqdm
 import numpy as np
 import scipy.stats as stats
+
 import pandas as pd
-from tabulate import tabulate
 from pandasql import sqldf
 
 import matplotlib.cm as cm
@@ -41,7 +42,7 @@ class ZScorer:
         fp_type: str = "morgan",
         from_preprocessed_pickle: str = None,
         hide_progress: bool = False,
-        tabulate: bool = True,
+        tabulate_scores: bool = True,
     ) -> None:
         """Init method for ZScorer.
 
@@ -69,7 +70,7 @@ class ZScorer:
             raise Exception("Fingerprint type not supported.")
 
         self.prog = hide_progress
-        self.table = tabulate
+        self.table = tabulate_scores
         self.user_frags = False
         self.data = None
         self.fps = None
@@ -143,7 +144,6 @@ class ZScorer:
             if not self.use_preprocessed:
                 self._compute_user_frags(fragment_smarts)
             fragments = fragment_smarts
-            self.user_frags_strings = fragment_smarts
 
         # auto-generated fragments (from morgan fp)
         else:
@@ -367,7 +367,7 @@ class ZScorer:
         Returns:
             Tuple[List, List]: Fragment ids and scores of the top- and bottom-k scoring fragments.
         """
-        frag_ids, frag_scores, user_frags = [], [], []
+        frag_ids, frag_scores = [], []
 
         for frag, zscore in sorted(self.zscores.items(), key=lambda x: x[1]):
             frag_ids.append(str(frag))
