@@ -1,4 +1,4 @@
-# molZ
+# molZ 🧪
 
 Statistical analysis tool to help identify molecular fragments that promote, or detract from,
 target properties.
@@ -41,7 +41,8 @@ from molz import ZScorer
 scorer = ZScorer('data.csv', fp_rad=3, fp_bits=4096)
 
 # We are going to compute zscores of fragments present in high logp molecules.
-# Once the ZScorer is initialised, we must set the property ranges:
+# Once the ZScorer is initialised, we must set the property ranges; the data 
+# column and upper and lower bounds are selected:
 scorer.set_ranges([('penalised_logp', (12, 25))])
 
 # Now we can compute the zscores
@@ -64,7 +65,6 @@ from molz import ZScorer
 scorer = ZScorer('data.csv')
 
 # We are going to compute zscores of fragments present in high logp molecules.
-# The data column and upper and lower bounds are selected thusly:
 scorer.set ranges(
     [
         ('penalised_logp', (12, 25))
