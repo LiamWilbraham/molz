@@ -41,7 +41,11 @@ from molz import ZScorer
 scorer = ZScorer('data.csv', fp_rad=3, fp_bits=4096)
 
 # We are going to compute zscores of fragments present in high logp molecules.
-scorer.score_fragments([('penalised_logp', (12, 25))])
+# Once the ZScorer is initialised, we must set the property ranges:
+scorer.set_ranges([('penalised_logp', (12, 25))])
+
+# Now we can compute the zscores
+scorer.score_fragments()
 
 # We can plot a bar graph of zscores for the 15 highest and lowest scoring fragments.
 # Also, we can draw a given fragment by refering to its Morgan fingerprint bit index.
@@ -60,10 +64,13 @@ from molz import ZScorer
 scorer = ZScorer('data.csv')
 
 # We are going to compute zscores of fragments present in high logp molecules.
-scorer.score_fragments(
+# The data column and upper and lower bounds are selected thusly:
+scorer.set ranges(
     [
         ('penalised_logp', (12, 25))
-    ], 
+    ]
+)
+scorer.score_fragments(
     fragment_smiles=['CCCC', 'OC', 'N(C)(C)']
 )
 
@@ -96,12 +103,13 @@ from molz import ZScorer
 
 # we will use the 'HOMO_calc' data column.
 scorer = ZScorer('lopez-data.csv', fp_bits=8192, fp_rad=3)
-scorer.score_fragments(
+scorer.set_ranges(
     [
         ("HOMO_calc", (-99, -6.3)),
         ("LUMO_calc", (-6.6, 99)),
     ]
 )
+scorer.score_fragments()
 scorer.plot(k=40, figsize=(12, 3), save_to="lopez-homo-lumo.png", top_only=True, log_y=True)
 ```
 
