@@ -73,6 +73,7 @@ class ZScorer:
         self.props = None
         self.prop_ranges = None
         self.from_preprocessed_pickle = from_preprocessed_pickle
+        self.relative_sample_size = 0
         #
 
         """
@@ -95,7 +96,7 @@ class ZScorer:
     def set_ranges(
         self,
         properties: List[Tuple[str, Tuple[float, float]]],
-    ) -> pd.DataFrame:
+    ) -> None:
         """Define the range or ranges of properties in the data, and get a subpopulation
         of the data that meets the set criteria.
 
@@ -117,7 +118,7 @@ class ZScorer:
         self.prop_ranges = prop_ranges
         self.props = props
 
-        sample = self.getSample()
+        _ = self.get_sample()
 
     def score_fragments(
         self,
@@ -146,7 +147,7 @@ class ZScorer:
                 self._generate_df_with_fragments()
             fragments = list(range(self.fp_bits))
 
-        sample = self.getSample()
+        sample = self.get_sample()
 
         # compute total number of times each fragment appears in data
         totals = [self.data[frag_id].sum() for frag_id in fragments]
@@ -283,7 +284,7 @@ class ZScorer:
         self.data = pd.read_csv(datafile, low_memory=True)
         self.data.insert(0, "ID", range(0, len(self.data)))
 
-    def getSample(self):
+    def get_sample(self):
         """
         Querying the data and returns a sample that meets specificied criteria
 
@@ -334,7 +335,7 @@ class ZScorer:
             Chem.Mol: RDKit mol object of mol containing fragment.
         """
         if self.prop_ranges:
-            sample = self.getSample()
+            sample = self.get_sample()
 
         # if fragment not present in range, draw mol from all data
         if len(sample[sample[int(frag_id)] == 1]) == 0:
@@ -465,6 +466,4 @@ class ZScorer:
             mean = n * k / N
             var = n * k * (N - k) * (N - n) / (N ** 2 * (N - 1)) + 1e-30
 
-        z = (x - mean) / var
-
-        return z
+        return (x - mean) / var
