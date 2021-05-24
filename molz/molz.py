@@ -93,6 +93,9 @@ class ZScorer:
             self._load_molecule_property_data(self.datafile)
             self.use_preprocessed = False
 
+        # adding Chem.Mol object to the dataframe
+        self._compute_mols_from_smiles()
+
     def set_ranges(
         self,
         properties: List[Tuple[str, Tuple[float, float]]],
@@ -130,9 +133,6 @@ class ZScorer:
             fragment_smarts (List[str], optional): User-defined fragments. Defaults to None,
                 in which case fragments are auto-generated.
         """
-
-        # adding Chem.Mol object to the dataframe
-        self._compute_mols_from_smiles()
 
         # user-defined fragments
         if fragment_smarts:
@@ -323,7 +323,6 @@ class ZScorer:
         )
         del tmp_df
         self.relative_sample_size = float(len(sample) / len(self.data))
-        print(f"{self.relative_sample_size * 100}")
         return sample
 
     def _get_mol_with_frag(self, frag_id: Union[str, int]) -> Chem.Mol:
