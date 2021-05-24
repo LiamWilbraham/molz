@@ -169,7 +169,7 @@ class ZScorer:
         figsize: Tuple[int, int] = (8, 4),
         top_only: bool = False,
         log_y: bool = False,
-    ):
+    ) -> None:
         """Create a bar plot of top and bottom k zscoring fragments.
 
         Args:
