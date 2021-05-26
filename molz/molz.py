@@ -86,6 +86,7 @@ class ZScorer:
         """
         # zscores for fragments will be stored here
         self.zscores = {}
+        self.ordered_scores = []
 
         # load in the data on initialisation
         if self.from_preprocessed_pickle:
@@ -173,6 +174,7 @@ class ZScorer:
         figsize: Tuple[int, int] = (8, 4),
         top_only: bool = False,
         log_y: bool = False,
+        table_style: str = "github",
     ) -> None:
         """Create a bar plot of top and bottom k zscoring fragments and print results to console
         as a table.
@@ -195,7 +197,7 @@ class ZScorer:
             frag_ids, frag_scores = frag_ids[k:], frag_scores[k:]
 
         printable = {"Fragment": frag_ids[::-1], "z": frag_scores[::-1]}
-
+        self.ordered_scores = zip(frag_ids, frag_scores)
         # create color gradient map
         my_cmap = cm.get_cmap("RdYlGn")
         my_norm = Normalize(vmin=-max(frag_scores), vmax=max(frag_scores))
@@ -215,7 +217,9 @@ class ZScorer:
         plt.tight_layout()
 
         if self.table:
-            print("\n" + tabulate(printable, headers="keys", tablefmt="github") + "\n")
+            print(
+                "\n" + tabulate(printable, headers="keys", tablefmt=table_style) + "\n"
+            )
 
         if save_to:
             plt.savefig(save_to)
@@ -335,7 +339,7 @@ class ZScorer:
             inplace=True,
         )
         del tmp_df
-        self.relative_sample_size = float(len(sample) / len(self.data))
+        self.relative_sample_size = 100 * float(len(sample) / len(self.data))
         return sample
 
     def _get_mol_with_frag(self, frag_id: Union[str, int]) -> Chem.Mol:
