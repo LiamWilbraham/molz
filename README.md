@@ -1,9 +1,4 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![CircleCI](https://circleci.com/gh/LiamWilbraham/molz.svg?style=shield)](https://circleci.com/gh/LiamWilbraham/molz)
-[![Code Quality Score](https://www.code-inspector.com/project/16914/score/svg)](https://www.code-inspector.com/project/16914/score/svg)
-[![Code Quality Score](https://www.code-inspector.com/project/16914/status/svg)](https://www.code-inspector.com/project/16914/status/svg)
-
-# molZ
+# molZ 🧪
 
 Statistical analysis tool to help identify molecular fragments that promote, or detract from,
 target properties.
@@ -18,13 +13,19 @@ by the user, or automatically generated using Morgan fingerprints.
 molZ relies heavily on [RDKit](https://www.rdkit.org), which I recommend installing via conda
 forge:
 
-```
+```bash
 $ conda install -c conda-forge rdkit
+```
+
+Use the following to install the other prequisites:
+
+```bash
+$ pip install tqdm numpy scipy pandas pandasql matplotlib tabulate
 ```
 
 After that, molZ can be installed with `pip`:
 
-```
+```bash
 $ pip install molz
 ```
 
@@ -40,7 +41,12 @@ from molz import ZScorer
 scorer = ZScorer('data.csv', fp_rad=3, fp_bits=4096)
 
 # We are going to compute zscores of fragments present in high logp molecules.
-scorer.score_fragments('penalised_logp', [12, 25])
+# Once the ZScorer is initialised, we must set the property ranges; the data 
+# column and upper and lower bounds are selected:
+scorer.set_ranges([('penalised_logp', (12, 25))])
+
+# Now we can compute the zscores
+scorer.score_fragments()
 
 # We can plot a bar graph of zscores for the 15 highest and lowest scoring fragments.
 # Also, we can draw a given fragment by refering to its Morgan fingerprint bit index.
@@ -59,8 +65,13 @@ from molz import ZScorer
 scorer = ZScorer('data.csv')
 
 # We are going to compute zscores of fragments present in high logp molecules.
+scorer.set ranges(
+    [
+        ('penalised_logp', (12, 25))
+    ]
+)
 scorer.score_fragments(
-    'penalised_logp', [12, 25], fragment_smiles=['CCCC', 'OC', 'N(C)(C)']
+    fragment_smiles=['CCCC', 'OC', 'N(C)(C)']
 )
 
 # We can plot a bar graph of zscores for the 15 highest and lowest scoring fragments.
@@ -82,7 +93,7 @@ $ curl https://ars.els-cdn.com/content/image/1-s2.0-S2542435117301307-mmc2.csv >
 ```
 
 Now, we will use `molz` to detect over- and under-represented molecular fragments in molecues
-with a predicted HOMO energy of greater than -5 eV.
+with a predicted HOMO energy of less than than -6.3 eV and LUMO energy greater than -6.6 eV. 
 
 We will use a relatively large number of fingerprint bits, to minimize
 [bit collisions](http://rdkit.blogspot.com/2014/02/colliding-bits.html).
@@ -92,21 +103,24 @@ from molz import ZScorer
 
 # we will use the 'HOMO_calc' data column.
 scorer = ZScorer('lopez-data.csv', fp_bits=8192, fp_rad=3)
-scorer.score_fragments('HOMO_calc', [-5, 10])
-
-scorer.plot(k=40, figsize=(12, 3), save_to='example_pce.png', top_only=True, log_y=True)
+scorer.set_ranges(
+    [
+        ("HOMO_calc", (-99, -6.3)),
+        ("LUMO_calc", (-6.6, 99)),
+    ]
+)
+scorer.score_fragments()
+scorer.plot(k=40, figsize=(12, 3), save_to="lopez-homo-lumo.png", top_only=True, log_y=True)
 ```
 
 Which gives the following plot:
 
-<img src="./assets/example_pce.png"/>
+<img src="./assets/lopez-homo-lumo.png"/>
 
-In this case the fragments (x axis) are expressed as bit vector positions. Drawing the top
-fragments reveals a series of particularly electron-rich substructures, which is what we'd expect
-for relatively high-energy HOMO orbitals. For instance:
+We can the view each of the fragments:
 
 ```
-scorer.draw_fragment(5773)
+scorer.draw_fragment(5607)
 ```
 
-<img src="./assets/bit_frag.png"/>
+<img src="./assets/frag_5607.PNG"/>
